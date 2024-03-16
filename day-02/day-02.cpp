@@ -32,10 +32,6 @@ int interpret(vector<int> program){
                 break;
         }
     }
-    for (int i: program){
-        cout << i << ",";
-    }
-    cout << endl;
     return program[0];
 }
 
@@ -44,7 +40,6 @@ int main(int argv, char **argc){
     options.add_options()
         ("1", "Solve part 1", cxxopts::value<bool>())
         ("2", "Solve part 2", cxxopts::value<bool>())
-        // ("f,foo", "Param foo", cxxopts::value<int>()->default_value("10"))
         ("h,help", "Print usage");
     auto result = options.parse(argv, argc);
 
@@ -60,7 +55,19 @@ int main(int argv, char **argc){
         program.at(2) = 2;
         cout << interpret(program) << endl;
     }
-    // if (result.count("2")) {
-    // }
+    if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        vector<int> program{my_parse(inf)};
+        const int target{19690720};
+        for (int noun{0}; noun < 100; noun++){
+            for (int verb{0}; verb < 100; verb++){
+                program.at(1) = noun;
+                program.at(2) = verb;
+                if (interpret(program) == target) {
+                    cout << noun * 100 + verb << endl;
+                }
+            }
+        }
+    }
     return 0;
 }
