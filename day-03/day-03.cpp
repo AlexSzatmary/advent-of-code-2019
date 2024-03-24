@@ -93,7 +93,10 @@ tuple<Eigen::ArrayXXi, int, int, int, int> render(vector<Step> wire){
 }
 
 int find_manhattan_distance_to_cross(vector<Step> wire_1, vector<Step> wire_2){
-    const auto [wire_1_diagram, min_x, max_x, min_y, max_y] = render(wire_1);
+    // const auto [wire_1_diagram, min_x, max_x, min_y, max_y] = render(wire_1);
+    Eigen::ArrayXXi wire_1_diagram;
+    int min_x, max_x, min_y, max_y;
+    tie(wire_1_diagram, min_x, max_x, min_y, max_y) = render(wire_1);
     int j{-min_x};
     int i{max_y};
     // Start with a very large possible Manhattan distance
