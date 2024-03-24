@@ -44,3 +44,4 @@ scratch*.txt
 *.png
 *.code-workspace
 cookies.txt
+include/Eigen
