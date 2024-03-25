@@ -2,6 +2,7 @@
 #include "Eigen/Dense"
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <regex>
 #include <string>
@@ -63,37 +64,40 @@ tuple<Eigen::ArrayXXi, int, int, int, int> render(vector<Step> wire){
     using namespace Eigen;
     auto [min_x, max_x, min_y, max_y] = measure(wire);
     ArrayXXi wire_diagram = ArrayXXi::Zero(max_y - min_y + 1, max_x - min_x + 1);
-    // cout << wire_diagram.rows() << " " << wire_diagram.cols() << endl;
     int j{-min_x};
     int i{max_y};
-    // cout << min_x << ", " << min_y << ", " << max_x << ", " << max_y << endl;
+    int time{1};
     for (auto step: wire){
-        // cout << j << " " << i << " " << step.dir << " " << step.dist << endl;
         switch (step.dir) {
             case 'R':
-                wire_diagram(i, seqN(j + 1, step.dist)) = 1;
+                wire_diagram(i, seqN(j + 1, step.dist)) = Eigen::ArrayXi::LinSpaced(
+                    step.dist, time, time + step.dist - 1);
                 j += step.dist;
                 break;
             case 'U':
-                wire_diagram(seqN(i - step.dist, step.dist), j) = 1;
+                wire_diagram(seqN(i - step.dist, step.dist), j) =
+                    Eigen::ArrayXi::LinSpaced(
+                    step.dist, time, time + step.dist - 1).reverse();
                 i -= step.dist;
                 break;
             case 'L':
-                wire_diagram(i, seqN(j - step.dist, step.dist)) = 1;
+                wire_diagram(i, seqN(j - step.dist, step.dist)) = 
+                Eigen::ArrayXi::LinSpaced(
+                    step.dist, time, time + step.dist - 1).reverse();
                 j -= step.dist;
                 break;
             case 'D':
-                wire_diagram(seqN(i + 1, step.dist), j) = 1;
+                wire_diagram(seqN(i + 1, step.dist), j) =                     Eigen::ArrayXi::LinSpaced(
+                    step.dist, time, time + step.dist - 1);
                 i += step.dist;
                 break;
         }
+        time += step.dist;
     }
-    // cout << wire_diagram << endl;
     return tuple(wire_diagram, min_x, max_x, min_y, max_y);
 }
 
 int find_manhattan_distance_to_cross(vector<Step> wire_1, vector<Step> wire_2){
-    // const auto [wire_1_diagram, min_x, max_x, min_y, max_y] = render(wire_1);
     Eigen::ArrayXXi wire_1_diagram;
     int min_x, max_x, min_y, max_y;
     tie(wire_1_diagram, min_x, max_x, min_y, max_y) = render(wire_1);
@@ -103,24 +107,21 @@ int find_manhattan_distance_to_cross(vector<Step> wire_1, vector<Step> wire_2){
     int manhattan_distance = wire_1_diagram.rows() + wire_1_diagram.cols();
     int rows{(int) wire_1_diagram.rows()};
     int cols{(int) wire_1_diagram.cols()};
-    // cout << manhattan_distance << endl;
     auto f = [&](int i, int j, int manhattan_distance){
         if (0 <= i && i < rows &&
             0 <= j && j < cols &&
-            wire_1_diagram(i, j) == 1 &&
+            wire_1_diagram(i, j) > 0 &&
             abs(i - max_y) + abs(j + min_x) < manhattan_distance){
                         manhattan_distance = abs(i - max_y) + abs(j + min_x);
                     }
         return manhattan_distance;
     };
-    cout << j + min_x << ", " << max_y - i << ", " << manhattan_distance << endl;
     for (auto step: wire_2){
         switch (step.dir) {
             case 'R':
                 ++j;
                 for (int next_j{j + step.dist - 1}; j <= next_j; ++j){
                     manhattan_distance = f(i, j, manhattan_distance);
-        cout << j + min_x << ", " << max_y - i << ", " << manhattan_distance << endl;
                 }
                 --j;
                 break;
@@ -128,7 +129,6 @@ int find_manhattan_distance_to_cross(vector<Step> wire_1, vector<Step> wire_2){
                 --i;
                 for (int next_i{i - step.dist + 1}; i >= next_i; --i){
                     manhattan_distance = f(i, j, manhattan_distance);
-        cout << j + min_x << ", " << max_y - i << ", " << manhattan_distance << endl;
                 }
                 ++i;
                 break;
@@ -136,7 +136,6 @@ int find_manhattan_distance_to_cross(vector<Step> wire_1, vector<Step> wire_2){
                 --j;
                 for (int next_j{j - step.dist + 1}; j >= next_j; --j){
                     manhattan_distance = f(i, j, manhattan_distance);
-        cout << j + min_x << ", " << max_y - i << ", " << manhattan_distance << endl;
                 }
                 ++j;
                 break;
@@ -144,14 +143,71 @@ int find_manhattan_distance_to_cross(vector<Step> wire_1, vector<Step> wire_2){
                 ++i;
                 for (int next_i{i + step.dist - 1}; i <= next_i; ++i){
                     manhattan_distance = f(i, j, manhattan_distance);
-        cout << j + min_x << ", " << max_y - i << ", " << manhattan_distance << endl;
                 }
                 --i;
                 break;
         }
-        // cout << j + min_x << ", " << max_y - i << ", " << manhattan_distance << endl;
     }
     return manhattan_distance;
+}
+
+int find_total_time_to_cross(vector<Step> wire_1, vector<Step> wire_2){
+    Eigen::ArrayXXi wire_1_diagram;
+    int min_x, max_x, min_y, max_y;
+    tie(wire_1_diagram, min_x, max_x, min_y, max_y) = render(wire_1);
+    int j{-min_x};
+    int i{max_y};
+    // Start with a very large possible total_time
+    int total_time = numeric_limits<int>::max() ;
+    int rows{(int) wire_1_diagram.rows()};
+    int cols{(int) wire_1_diagram.cols()};
+    auto f = [&](int i, int j, int time, int total_time){
+        if (0 <= i && i < rows &&
+            0 <= j && j < cols &&
+            wire_1_diagram(i, j) > 0 &&
+            time + wire_1_diagram(i, j) < total_time){
+                        total_time = time + wire_1_diagram(i, j);
+                    }
+        return total_time;
+    };
+    int time{0};
+    for (auto step: wire_2){
+        switch (step.dir) {
+            case 'R':
+                ++j;
+                for (int next_j{j + step.dist - 1}; j <= next_j; ++j){
+                    ++time;
+                    total_time = f(i, j, time, total_time);
+                }
+                --j;
+                break;
+            case 'U':
+                --i;
+                for (int next_i{i - step.dist + 1}; i >= next_i; --i){
+                    ++time;
+                    total_time = f(i, j, time, total_time);
+                }
+                ++i;
+                break;
+            case 'L':
+                --j;
+                for (int next_j{j - step.dist + 1}; j >= next_j; --j){
+                    ++time;
+                    total_time = f(i, j, time, total_time);
+                }
+                ++j;
+                break;
+            case 'D':
+                ++i;
+                for (int next_i{i + step.dist - 1}; i <= next_i; ++i){
+                    ++time;
+                    total_time = f(i, j, time, total_time);
+                }
+                --i;
+                break;
+        }
+    }
+    return total_time;
 }
 
 int main(int argv, char **argc){
@@ -171,12 +227,13 @@ int main(int argv, char **argc){
         ifstream inf{result.unmatched()[0]};
         vector<Step> wire_1{my_parse(inf)};
         vector<Step> wire_2{my_parse(inf)};
-        // auto p = measure(wire1);
-        // cout << "Wire 1 x " << p.first << " y " << p.second << endl;
-        // auto wire_1_diagram = render(wire_1);
         cout << find_manhattan_distance_to_cross(wire_1, wire_2) << endl;
     }
-    // if (result.count("2")) {
-    // }
+    if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        vector<Step> wire_1{my_parse(inf)};
+        vector<Step> wire_2{my_parse(inf)};
+        cout << find_total_time_to_cross(wire_1, wire_2) << endl;
+    }
     return 0;
 }
