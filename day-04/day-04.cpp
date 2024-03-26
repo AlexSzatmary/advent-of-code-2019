@@ -57,6 +57,39 @@ int main(int argv, char **argc){
         cout << possible_passwords << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        auto [lo, hi] = my_parse(inf);
+        cout << lo << ", " << hi << endl;
+        int hi_i{stoi(hi)};
+        int possible_passwords{0};
+        for (int i{stoi(lo)}; i <= hi_i; ++i){
+            vector<int> v{};
+            auto i_s{to_string(i)};
+            transform(begin(i_s), end(i_s), back_inserter(v),
+                [](char c){return c - '0';});
+            int prev{-1};
+            int n_in_group{1};
+            bool same2{false};
+            bool increasing{true};
+            for (auto j: v){
+                if (j < prev) {
+                    increasing = false;
+                    break;
+                }
+                if (j == prev) {
+                    ++n_in_group;
+                } else {
+                    if (n_in_group == 2) {
+                        same2 = true;
+                    }
+                    n_in_group = 1;
+                }
+                prev = j;
+            }
+            if (n_in_group == 2) same2 = true;
+            if (same2 && increasing) ++possible_passwords;
+        }
+        cout << possible_passwords << endl;
     }
     return 0;
 }
