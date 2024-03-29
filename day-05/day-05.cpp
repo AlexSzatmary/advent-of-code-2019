@@ -33,17 +33,20 @@ void interpret(vector<int> p){
     for (int i{0}; i < p.size() && p.at(i) != 99; i += op_size){
         int op{p.at(i) % 100};
         switch (op){
-            case 1:
+            case 1: // add
+            case 2: // mult
+            case 7: // <
+            case 8: // =
                 op_size = 4;
                 break;
-            case 2:
-                op_size = 4;
-                break;
-            case 3:
+
+            case 3: // input
+            case 4: // output
                 op_size = 2;
                 break;
-            case 4:
-                op_size = 2;
+            case 5: // jump if true
+            case 6: // jump if false
+                op_size = 3;
                 break;
         }
 
@@ -52,7 +55,6 @@ void interpret(vector<int> p){
             modes[j] = parameter_modes_prefix % 10 == 1;
             parameter_modes_prefix /= 10;
         }
-
         int input{0};
         switch (op){
             case 1:
@@ -69,6 +71,26 @@ void interpret(vector<int> p){
                 break;
             case 4:
                 cout << access(p, i + 1, modes[0]) << endl;
+                break;
+            case 5:
+                if (access(p, i + 1, modes[0]) != 0){
+                    i = access(p, i + 2, modes[1]);
+                    op_size = 0;
+                }
+                break;
+            case 6:
+                if (access(p, i + 1, modes[0]) == 0){
+                    i = access(p, i + 2, modes[1]);
+                    op_size = 0;
+                }
+                break;
+            case 7:
+                p.at(p.at(i + 3)) = (access(p, i + 1, modes[0]) <
+                    access(p, i + 2, modes[1]) ? 1 : 0);
+                break;
+            case 8:
+                p.at(p.at(i + 3)) = (access(p, i + 1, modes[0]) ==
+                    access(p, i + 2, modes[1]) ? 1 : 0);
                 break;
         }
     }
@@ -88,12 +110,13 @@ int main(int argv, char **argc){
       std::cout << options.help() << std::endl;
       exit(0);
     }
-    if (result.count("1")) {
+    if (result.count("1")) { // The distinction between parts 1 and 2 is entering
+    // 1 versus 5
         ifstream inf{result.unmatched()[0]};
         vector<int> program{my_parse(inf)};
         interpret(program);
     }
-    if (result.count("2")) {
-    }
+    // if (result.count("2")) {
+    // }
     return 0;
 }
