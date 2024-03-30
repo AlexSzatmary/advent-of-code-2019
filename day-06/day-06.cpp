@@ -9,11 +9,6 @@
 
 using namespace std;
 
-// struct Body{
-//     string name;
-//     vector<Body>satellites;
-// };
-
 using BodyGraph = map<string, list<string>>;
 
 BodyGraph my_parse(ifstream &inf){
@@ -38,9 +33,6 @@ int count_orbits(BodyGraph bg){
     list<string> next_level{bg["COM"]};
     int level{1};
     int orbits{0};
-    // for (auto node: bg["COM"]){
-    //     cout << node << endl;
-    // }
     while (!next_level.empty()){
         this_level = next_level;
         next_level = list<string>();
@@ -56,6 +48,54 @@ int count_orbits(BodyGraph bg){
         ++level;
     }
     return orbits;
+}
+
+map<string, string> my_parse_parent(ifstream &inf){
+    string line;
+    regex re("(\\w+)\\)(\\w+)");
+    map<string, string> parent_graph;
+    smatch m;
+    while (getline(inf, line)){
+        regex_match(line, m, re);
+        parent_graph[m.str(2)] = m.str(1);
+    }
+    return parent_graph;
+}
+
+int count_transfers(map<string, string> parent_graph){
+    auto santa_node{parent_graph["SAN"]};
+    auto you_node{parent_graph["YOU"]};
+
+    int santa_depth{0};
+    auto next{santa_node};
+    while (next != "COM"){
+        next = parent_graph[next];
+        ++santa_depth;
+    }
+
+    int you_depth{0};
+    next = you_node;
+    while (next != "COM"){
+        next = parent_graph[next];
+        ++you_depth;
+    }
+
+    if (santa_depth > you_depth){
+        for (int i = 0; i < santa_depth - you_depth; ++i){
+            santa_node = parent_graph[santa_node];
+        }
+    } else if (santa_depth < you_depth){
+        for (int i = 0; i < you_depth - santa_depth; ++i){
+            you_node = parent_graph[you_node];
+        }
+    }
+    int transfers{abs(santa_depth - you_depth)};
+    while (you_node != santa_node){
+        transfers += 2;
+        santa_node = parent_graph[santa_node];
+        you_node = parent_graph[you_node];
+    }
+    return transfers;
 }
 
 int main(int argv, char **argc){
@@ -74,14 +114,12 @@ int main(int argv, char **argc){
     if (result.count("1")) {
         ifstream inf{result.unmatched()[0]};
         auto bg{my_parse(inf)};
-        // for (auto i: bg){
-        //     for (auto j: i.second){
-        //         cout << i.first << "->" << j << endl;
-        //     }
-        // }
         cout << count_orbits(bg) << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        auto parent_graph = my_parse_parent(inf);
+        cout << count_transfers(parent_graph) << endl;
     }
     return 0;
 }
