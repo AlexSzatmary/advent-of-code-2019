@@ -45,3 +45,5 @@ scratch*.txt
 *.code-workspace
 cookies.txt
 include/Eigen
+.vscode*
+vscode*
