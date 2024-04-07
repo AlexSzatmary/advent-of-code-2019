@@ -37,6 +37,28 @@ int count_1_by_count_2(string layer){
     return count(begin(layer), end(layer), '1') * count(begin(layer), end(layer), '2');
 }
 
+string stack_layers(vector<string> layers){
+    string stacked(LAYER_SIZE, ' ');
+    for (const auto& layer: layers){
+        for (int i{0}; i < LAYER_SIZE; ++ i){
+            if (stacked[i] == ' ') {
+                if (layer[i] == '0') {
+                    stacked[i] = '.';
+                } else if (layer[i] == '1') {
+                    stacked[i] = 'X';
+                }
+            }
+        }
+    }
+    return stacked;
+}
+
+void render_stack(string stack){
+    for (int i{0}; i < HEIGHT; ++i){
+        cout << stack.substr(i * WIDTH, WIDTH) << endl;
+    }
+}
+
 int main(int argv, char **argc){
     cxxopts::Options options("test", "A brief description");
     options.add_options()
@@ -58,6 +80,9 @@ int main(int argv, char **argc){
     }
     if (result.count("2")) {
         ifstream inf{result.unmatched()[0]};
+        auto layers{my_parse(inf)};
+        auto stack{stack_layers(layers)};
+        render_stack(stack);
     }
     return 0;
 }
