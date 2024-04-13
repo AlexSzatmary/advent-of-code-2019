@@ -202,6 +202,12 @@ int main(int argv, char **argc){
         c.print_output_buffer();
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        vector<long> program{my_parse(inf)};
+        Computer c{program};
+        c.input_buffer.push_back(2);
+        c.interpret();
+        c.print_output_buffer();
     }
     if (result.count("day-02")) run_day_2();
     if (result.count("day-05")) run_day_5();
