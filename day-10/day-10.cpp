@@ -2,6 +2,7 @@
 #include "Eigen/Dense"
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <vector>
 
@@ -72,6 +73,48 @@ tuple<int, int, int> find_best_station_loc(Eigen::ArrayXXi asteroid_map){
     return tuple(best_x, best_y, best_asteroids);
 }
 
+using coords = pair<int, int>;
+using laserpath = map<double, coords>;
+using laserpaths = map<double, laserpath>;
+
+laserpaths make_laserpaths(Eigen::ArrayXXi& asteroid_map, int x0, int y0){
+    laserpaths lps;
+    for (int y{0}; y < asteroid_map.rows(); ++y){
+        for (int x{0}; x < asteroid_map.cols(); ++x){
+            if (asteroid_map(y, x) && !(x == x0 && y == y0)){
+                int dx{x - x0};
+                int dy{y - y0};
+                int g{gcd(dx, dy)};
+                double theta;
+                if (dx == 0 && dy < 0){
+                    theta = -4; // pi is not a constant in C++17
+                } else theta = atan2(-dx / g, dy / g);
+                int radius{dx * dx + dy * dy};
+                auto i = lps.find(theta);
+                if (i != lps.end()) {
+                    i->second[radius] = pair(x, y);
+                } else {
+                    lps[theta] = laserpath({{radius, pair(x, y)}});
+                }
+            }
+        }
+    }
+    return lps;
+}
+
+coords blast_lasers(laserpaths lps, int n){
+    coords last;
+    while ((n > 0) && !lps.empty()){
+        for (auto lp = lps.begin(); lp != lps.end(); ){
+            last = lp->second.extract(lp->second.begin()).mapped();
+            --n;
+            if (n == 0) return last;
+            if (lp->second.empty()) lps.erase(lp++); else ++lp;
+        }
+    }
+    return last;
+}
+
 int main(int argv, char **argc){
     cxxopts::Options options("test", "A brief description");
     options.add_options()
@@ -88,10 +131,15 @@ int main(int argv, char **argc){
         ifstream inf{result.unmatched()[0]};
         auto asteroid_map = my_parse(inf);
         auto [best_x, best_y, best_asteroids] = find_best_station_loc(asteroid_map);
-        cout << best_x << ", " << best_y << endl;
         cout << best_asteroids << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        auto asteroid_map = my_parse(inf);
+        auto [best_x, best_y, best_asteroids] = find_best_station_loc(asteroid_map);
+        laserpaths lps{make_laserpaths(asteroid_map, best_x, best_y)};
+        coords asteroid_200{blast_lasers(lps, 200)};
+        cout << asteroid_200.first * 100 + asteroid_200.second << endl;
     }
     return 0;
 }
