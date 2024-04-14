@@ -1,16 +1,10 @@
 #include "cxxopts.hpp"
 #include <algorithm>
-#include <list>
-#include <map>
 #include <fstream>
 #include <iostream>
-#include <regex>
 #include <string>
-#include <utility>
 
 using namespace std;
-
-using BodyGraph = map<string, list<string>>;
 
 auto const WIDTH{25};
 auto const HEIGHT{6};
