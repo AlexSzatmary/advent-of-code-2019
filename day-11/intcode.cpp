@@ -101,21 +101,15 @@ void IntcodeComputer::interpret(){
                     input = input_buffer.front();
                     input_buffer.pop_front();
                 } else {
-                    cout << "This should be unreachable. In case 3." << endl;
-                    return;
-                    // This branch was previously used to pause execution but the
-                    // pause got moved to output and that seems to work better.
+                    return; // Suspend execution and await input
+                    // If the input buffer is empty, there is no state to capture
+                    // when suspending.
                 }
                 my_assign(i + 1, modes[0], input);
                 break;
             case 4: // output
                 output = access(i + 1, modes[0]);
                 output_buffer.push_back(output);
-
-                // the following could be uncommented for an interactive mode as needed
-                // for day 7
-                // i += op_size; // Before returning, must advance i.
-                // return; // Return so other things can run
                 break;
             case 5: // jmp if true
                 if (access(i + 1, modes[0]) != 0){
