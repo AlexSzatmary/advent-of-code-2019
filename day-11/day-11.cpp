@@ -13,7 +13,7 @@ using namespace std;
 
 using hullmap = map<pair<int, int>, bool>;
 
-hullmap paint_hull(vector<long> program){
+hullmap paint_hull(vector<long> program, bool start){
     hullmap hm;
     int x{0};
     int y{0};
@@ -21,6 +21,7 @@ hullmap paint_hull(vector<long> program){
     IntcodeComputer c{program};
     int color{0};
     int delta_dir{0};
+    if (start) hm[pair(x, y)] = true;
     while (!c.halt){
         int current_color;
         auto i = hm.find(pair(x, y));
@@ -57,6 +58,28 @@ hullmap paint_hull(vector<long> program){
     return hm;
 }
 
+void render_hullmap(hullmap hm){
+    int xmin{hm.begin()->first.first};
+    int xmax{hm.rbegin()->first.first};
+    auto [mn, mx] = minmax_element(hm.begin(), hm.end(),
+        [](pair<pair<int, int>, bool> a, pair<pair<int, int>, bool> b){
+            return a.first.second < b.first.second;});
+    int ymin{mn->first.second};
+    int ymax{mx->first.second};
+    for (int y = ymax; y >= ymin; --y){
+        for (int x = xmin; x <= xmax; ++x){
+            auto i = hm.find(pair(x, y));
+            if (i != hm.end() && i->second){
+                cout << 'X';
+            } else {
+                cout << ' ';
+            }
+        }
+        cout << endl;
+    }
+    return;
+}
+
 int main(int argv, char **argc){
     cxxopts::Options options("test", "A brief description");
     options.add_options()
@@ -78,10 +101,14 @@ int main(int argv, char **argc){
     if (result.count("1")) {
         ifstream inf{result.unmatched()[0]};
         vector<long> program{my_parse(inf)};
-        hullmap hm{paint_hull(program)};
+        hullmap hm{paint_hull(program, false)};
         cout << hm.size() << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        vector<long> program{my_parse(inf)};
+        hullmap hm{paint_hull(program, true)};
+        render_hullmap(hm);
     }
     if (result.count("day-02")) run_day_2();
     if (result.count("day-05")) run_day_5();
