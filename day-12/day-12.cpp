@@ -74,6 +74,35 @@ int main(int argv, char **argc){
         cout << calculate_energy(x, v) << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        auto x0 = my_parse(inf);
+        Eigen::ArrayXXi v0{Eigen::ArrayXXi::Zero(4, 3)};
+        Eigen::ArrayXXi x{x0};
+        Eigen::ArrayXXi v{v0};
+        int repeat_xvx{0};
+        int repeat_yvy{0};
+        int repeat_zvz{0};
+        for (int i{1}; i <= 1000000; ++i){
+            tie(x, v) = iterate(x, v);
+            if ((x(Eigen::all, 0) == x0(Eigen::all, 0)).all() && 
+                (v(Eigen::all, 0) == v0(Eigen::all, 0)).all() && repeat_xvx == 0){
+                repeat_xvx = i;
+            }
+            if ((x(Eigen::all, 1) == x0(Eigen::all, 1)).all() &&
+                (v(Eigen::all, 1) == v0(Eigen::all, 1)).all() && repeat_yvy == 0){
+                repeat_yvy = i;
+            }
+            if ((x(Eigen::all, 2) == x0(Eigen::all, 2)).all() &&
+                (v(Eigen::all, 2) == v0(Eigen::all, 2)).all() && repeat_zvz == 0){
+                repeat_zvz = i;
+            }
+
+        }
+        long LCM{1};
+        LCM = lcm(LCM, repeat_xvx);
+        LCM = lcm(LCM, repeat_yvy);
+        LCM = lcm(LCM, repeat_zvz);
+        cout << LCM << endl;
     }
     return 0;
 }
