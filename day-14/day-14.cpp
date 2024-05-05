@@ -9,9 +9,9 @@
 using namespace std;
 
 struct equation{
-    int product_coeff{};
+    long product_coeff{};
     vector<string> reactant{};
-    vector<int> reactant_coeff{};
+    vector<long> reactant_coeff{};
 };
 
 map<string, equation> my_parse(ifstream &inf){
@@ -19,7 +19,7 @@ map<string, equation> my_parse(ifstream &inf){
     map<string, equation> reaction_network{};
     regex product_re{"(.*) => ([0-9]+) ([A-z]+)"};
     regex reactant_re("([0-9]+) ([A-z]+)");
-    int row{0};
+    long row{0};
     while (getline(inf, line) && !line.empty()){
         smatch m_product;
         regex_match(line, m_product, product_re);
@@ -43,8 +43,8 @@ map<string, equation> my_parse(ifstream &inf){
     return reaction_network;
 }
 
-map<string, int> count_references(map<string, equation> reaction_network){
-    map<string, int> references{{"ORE", 0}};
+map<string, long> count_references(map<string, equation> reaction_network){
+    map<string, long> references{{"ORE", 0}};
     for (const auto& [product, eq]: reaction_network){
         references[product] = 0;
     }
@@ -56,12 +56,13 @@ map<string, int> count_references(map<string, equation> reaction_network){
     return references;
 }
 
-int find_needed_ore(map<string, equation> reaction_network){
-    map<string, int> orders{{"ORE", 0}};
+long find_needed_ore(map<string, equation> reaction_network, long fuel_order){
+    map<string, long> orders{{"ORE", 0}};
     // ORE is not a product and thus must be initialized.
     for (auto [product, eq]: reaction_network) orders[product] = 0;
-    orders["FUEL"] = 1; // FUEL is the only product that starts with an order. 
-    auto references = count_references(reaction_network);
+    orders["FUEL"] = fuel_order; // FUEL is the only product that starts with an order. 
+    auto references = count_references(reaction_network);  // This is re-counted 
+    // upon repeated calls to this function, which is a little wasteful.
     list<string> leaves{};
     for (auto [product, refs]: references){
         if (refs == 0) leaves.push_back(product);
@@ -71,8 +72,8 @@ int find_needed_ore(map<string, equation> reaction_network){
         string leaf = leaves.front();
         leaves.pop_front();
         equation eq = reaction_network.at(leaf);
-        int times_to_run{(orders[leaf] - 1) / eq.product_coeff + 1};
-        for (int i{0}; i < eq.reactant.size(); ++i){
+        long times_to_run{(orders[leaf] - 1) / eq.product_coeff + 1};
+        for (long i{0}; i < eq.reactant.size(); ++i){
             orders.at(eq.reactant.at(i)) += times_to_run * eq.reactant_coeff.at(i);
             --references.at(eq.reactant.at(i));
             if (references.at(eq.reactant.at(i)) == 0){
@@ -99,9 +100,28 @@ int main(int argv, char **argc){
     if (result.count("1")) {
         ifstream inf{result.unmatched()[0]};
         auto reaction_network = my_parse(inf);
-        cout << find_needed_ore(reaction_network) << endl;
+        cout << find_needed_ore(reaction_network, 1) << endl;
     }
     if (result.count("2")) {
+        long starting_ore{1'000'000'000'000};
+        ifstream inf{result.unmatched()[0]};
+        auto reaction_network = my_parse(inf);
+        long lo_fuel{0};
+        long hi_fuel{4};
+        long lo_ore{find_needed_ore(reaction_network, lo_fuel)};
+        long hi_ore{find_needed_ore(reaction_network, hi_fuel)};
+        while (hi_ore < starting_ore){
+            lo_fuel = hi_fuel;
+            lo_ore = hi_ore;
+            hi_fuel *= 2;
+            hi_ore = find_needed_ore(reaction_network, hi_fuel);
+        }
+        while (lo_fuel + 1 < hi_fuel){
+            long nu_fuel{(lo_fuel + hi_fuel) >> 1};
+            long nu_ore{find_needed_ore(reaction_network, nu_fuel)};
+            if (nu_ore > starting_ore) hi_fuel = nu_fuel; else lo_fuel = nu_fuel;
+        }
+        cout << lo_fuel << endl;
     }
     if (result.count("d")){
         ifstream inf{result.unmatched()[0]};
