@@ -81,6 +81,7 @@ void render_shipmap(shipmap sm){
             {
             case -1:
                 cout << '0';
+                break;
             case 0:
                 cout << '#';
                 break;
@@ -134,8 +135,6 @@ pair<shipmap, pathlog> walk(IntcodeComputer ic){
             ic.interpret();
             last_reply = ic.output_buffer.front();
             ic.output_buffer.pop_front();
-            // render_shipmap(sm);
-            // cout << "***" << endl;
         }
         auto [dx, dy] = dir_to_vec(dir);
         x += dx;
@@ -184,13 +183,48 @@ int min_commands_to_oxygen(shipmap& sm){
             }
             processed.insert(step);
         }
-        cout << "next steps" << next_edges.size() << endl;
         now_edges = next_edges;
         next_edges = list<State>{};
         ++commands;
-        cout << commands << endl;
     }
     return commands;
+}
+
+int fill_oxygen(shipmap& sm){
+    int commands{0};
+    State oxygen_xy{0, 0};
+    for (auto [xy, v]: sm){
+        if (v == 2){
+            oxygen_xy.x = xy.first;
+            oxygen_xy.y = xy.second;
+            break;
+        }
+    }
+    list<State> now_edges{oxygen_xy};
+    list<State> next_edges{};
+    set<State> processed{};
+    while (commands < 1000 && now_edges.size() > 0){
+        for (State step: now_edges){
+            if (processed.find(step) != processed.end()) continue;
+            switch (sm[pair(step.x, step.y)]){
+                case 0:
+                    break;
+                case 2:
+                case -1:
+                case 1:
+                    sm[pair(step.x, step.y)] = -1;
+                    next_edges.push_back(State{step.x - 1, step.y});
+                    next_edges.push_back(State{step.x + 1, step.y});
+                    next_edges.push_back(State{step.x, step.y - 1});
+                    next_edges.push_back(State{step.x, step.y + 1});
+            }
+            processed.insert(step);
+        }
+        now_edges = next_edges;
+        next_edges = list<State>{};
+        ++commands;
+    }
+    return commands - 2;
 }
 
 int main(int argv, char **argc){
@@ -216,10 +250,14 @@ int main(int argv, char **argc){
         vector<long> program{my_parse(inf)};
         auto ic = IntcodeComputer(program);
         auto [sm, pl] = walk(ic);
-        render_shipmap(sm);
         cout << min_commands_to_oxygen(sm) << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        vector<long> program{my_parse(inf)};
+        auto ic = IntcodeComputer(program);
+        auto [sm, pl] = walk(ic);
+        cout << fill_oxygen(sm) << endl;
     }
     if (result.count("day-02")) run_day_2();
     if (result.count("day-05")) run_day_5();
