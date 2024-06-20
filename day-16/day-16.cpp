@@ -33,9 +33,20 @@ Eigen::VectorXi FFT(Eigen::VectorXi signal, int phases){
             A(i, j) = p;
         }
     }
-
+    cout << A << endl;
     for (int i{0}; i < phases; ++i){
         signal = (A * signal).array().abs().unaryExpr([](int j){return j % 10;});
+    }
+    return signal;
+}
+
+Eigen::VectorXi FFT_part_2(Eigen::VectorXi signal, int phases){
+    // uses observation that we're looking for an answer from the second half of the
+    // result, which dramatically simplifies things
+    for (int i{0}; i < phases; ++i){
+        for (long j{signal.rows() - 2}; j >= 0; --j){
+            signal(j) = (signal(j) + signal(j + 1)) % 10;
+        }
     }
     return signal;
 }
@@ -60,6 +71,17 @@ int main(int argv, char **argc){
         cout << endl;
     }
     if (result.count("2")) {
+        ifstream inf{result.unmatched()[0]};
+        auto signal = my_parse(inf);
+        inf.seekg(0);
+        string line{};
+        getline(inf, line);
+        int offset{stoi(line.substr(0, 7))};
+        Eigen::VectorXi big_signal{signal.replicate(10000, 1)};
+        auto offset_signal{big_signal.tail(big_signal.rows() - offset)};
+        auto FFT_signal{FFT_part_2(big_signal.tail(big_signal.rows() - offset), 100)};
+        for (int i{0}; i < 8; ++i) cout << FFT_signal(i);
+        cout << endl;
     }
     return 0;
 }
