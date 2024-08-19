@@ -27,6 +27,7 @@ class IntcodeComputer{
     long access(long address, long mode);
     void interpret();
     void print_output_buffer();
+    void print_output_buffer_ascii();
 };
 
 #endif

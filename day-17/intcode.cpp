@@ -149,3 +149,7 @@ void IntcodeComputer::print_output_buffer(){
     }
     cout << endl;
 }
+
+void IntcodeComputer::print_output_buffer_ascii(){
+    for (char c: output_buffer) cout << static_cast<char>(c);
+}
