@@ -7,6 +7,7 @@
 #include "run_previous_days.hpp"
 
 using namespace std;
+using std::cout;
 
 int sum_alignment_parameters(IntcodeComputer ic){
     int j{0};
@@ -77,7 +78,8 @@ char access_dir(vector<vector<char>> v, int i, int j, int dir){
     return access(v, i_dir, j_dir);
 }
 
-void make_path(IntcodeComputer ic){
+string make_path(IntcodeComputer ic){
+    string path{};
     int j{0};
     int i{0};
     int start_i{0};
@@ -118,7 +120,7 @@ void make_path(IntcodeComputer ic){
     int dir{1};
 
     // faking it
-    cout << "R,";
+    path += "R,";
     --dir;
 
     while (true){
@@ -127,17 +129,88 @@ void make_path(IntcodeComputer ic){
             ++fwd;
             tie(i, j) = dir_ij(i, j, dir);
         }
-        cout << fwd << ',';
+        path += (to_string(fwd) + ',');
         if (access_dir(v, i, j, (dir + 1) % 4) == '#') {
             dir = (dir + 1 + 4) % 4;
-            cout << "L,";
+            path += "L,";
         } else if (access_dir(v, i, j, (dir - 1 + 4) % 4) == '#')
         {
             dir = (dir - 1 + 4) % 4;
-            cout << "R,";
+            path += "R,";
         } else break;
     }
-    cout << endl;
+    return path.substr(0, path.size() - 1);
+}
+
+int count_all(string const & str, string const & substr){
+    int instances{0};
+    for (size_t n{str.find(substr, 0)}; n != string::npos; n = str.find(substr, n + 1))
+        ++instances;
+    return instances;
+}
+
+string pick_best_function(string const & str){
+    int const memory_limit{20};
+    size_t start{0};
+    bool flag{true};
+    while (flag){
+        switch (str.at(start))
+        {
+        case ',':
+        case 'A':
+        case 'B':
+        case 'C':
+            ++start;
+            break;
+        default:
+            flag = false;
+            break;
+        }
+    }
+    size_t best_end{start + 1};
+    size_t best_end_score{0};
+    for (size_t end{best_end}; end < min(start + memory_limit, str.size()); ++end){
+        switch (str.at(end - 1))
+        {
+        case ',':
+            break; // no need to check just a comma
+        case 'A':
+        case 'B':
+        case 'C':
+            // if you found a function name, you went too far
+            end = start + memory_limit;
+            break;
+        default:
+            size_t score{(end - start) *
+                count_all(str, str.substr(start, end - start))};
+            if (score > best_end_score){
+                best_end = end;
+                best_end_score = score;
+            }
+            break;
+        }
+    }
+    return str.substr(start, best_end - start);
+}
+
+string replace_all(string const & str, string const & oldstr, string const & newstr){
+    string replaced{str};
+    string::size_type n{replaced.find(oldstr)};
+    while (n != string::npos){
+        replaced.replace(n, oldstr.size(), newstr);
+        n = replaced.find(oldstr);
+    }
+    return replaced;
+}
+
+tuple<string, string, string, string> compress(string const & path){
+    string A{pick_best_function(path)};
+    string pathA{replace_all(path, A, "A")};
+    string B{pick_best_function(pathA)};
+    string pathB{replace_all(pathA, B, "B")};
+    string C{pick_best_function(pathB)};
+    string pathC{replace_all(pathB, C, "C")};
+    return tuple(A, B, C, pathC);
 }
 
 int main(int argv, char **argc){
@@ -170,7 +243,15 @@ int main(int argv, char **argc){
         vector<long> program{my_parse(inf)};
         auto ic = IntcodeComputer(program);
         ic.interpret();
-        make_path(ic);
+        string path{make_path(ic)};
+        cout << path << endl;
+        cout << replace_all(path, "R,6,L,10,R,10", "A") << endl;
+        cout << count_all(path, "R,6,L,10,R,10") << endl;
+        auto [A, B, C, main] = compress(path);
+        cout << A << endl;
+        cout << B << endl;
+        cout << C << endl;
+        cout << main << endl;
 
         ic = IntcodeComputer(program);
         ic.program.at(0) = 2;
@@ -179,37 +260,45 @@ int main(int argv, char **argc){
         ic.output_buffer.clear();
 
         // Main
-        for (char c: string("A,B,A,B,A,C,A,C,B,C\n")){
+        for (char c: string(main)){
             cout << c;
             ic.input_buffer.push_back(c);
         }
+        cout << endl;
+        ic.input_buffer.push_back('\n');
         ic.interpret();
         ic.print_output_buffer_ascii();
         ic.output_buffer.clear();
 
         // A
-        for (char c: string("R,6,L,10,R,10,R,10\n")){
+        for (char c: string(A)){
             cout << c;
             ic.input_buffer.push_back(c);
         }
+        cout << endl;
+        ic.input_buffer.push_back('\n');
         ic.interpret();
         ic.print_output_buffer_ascii();
         ic.output_buffer.clear();
 
         // B
-        for (char c: string("L,10,L,12,R,10\n")){
+        for (char c: string(B)){
             cout << c;
             ic.input_buffer.push_back(c);
         }
+        cout << endl;
+        ic.input_buffer.push_back('\n');
         ic.interpret();
         ic.print_output_buffer_ascii();
         ic.output_buffer.clear();
 
         // C
-        for (char c: string("R,6,L,12,L,10\n")){
+        for (char c: string(C)){
             cout << c;
             ic.input_buffer.push_back(c);
         }
+        cout << endl;
+        ic.input_buffer.push_back('\n');
         ic.interpret();
         ic.print_output_buffer_ascii();
         ic.output_buffer.clear();
