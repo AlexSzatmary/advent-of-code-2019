@@ -200,11 +200,12 @@ int fill_oxygen(shipmap& sm){
             break;
         }
     }
-    list<State> now_edges{oxygen_xy};
-    list<State> next_edges{};
+    unique_ptr<list<State>> now_edges{
+        std::make_unique<list<State>>(initializer_list<State>{oxygen_xy})};
+    unique_ptr<list<State>> next_edges{std::make_unique<list<State>>()};
     set<State> processed{};
-    while (commands < 1000 && now_edges.size() > 0){
-        for (State step: now_edges){
+    while (commands < 1000 && now_edges->size() > 0){
+        for (State step: *now_edges){
             if (processed.find(step) != processed.end()) continue;
             switch (sm[pair(step.x, step.y)]){
                 case 0:
@@ -213,15 +214,15 @@ int fill_oxygen(shipmap& sm){
                 case -1:
                 case 1:
                     sm[pair(step.x, step.y)] = -1;
-                    next_edges.push_back(State{step.x - 1, step.y});
-                    next_edges.push_back(State{step.x + 1, step.y});
-                    next_edges.push_back(State{step.x, step.y - 1});
-                    next_edges.push_back(State{step.x, step.y + 1});
+                    next_edges->push_back(State{step.x - 1, step.y});
+                    next_edges->push_back(State{step.x + 1, step.y});
+                    next_edges->push_back(State{step.x, step.y - 1});
+                    next_edges->push_back(State{step.x, step.y + 1});
             }
             processed.insert(step);
         }
-        now_edges = next_edges;
-        next_edges = list<State>{};
+        now_edges = std::move(next_edges);
+        next_edges = make_unique<list<State>>();
         ++commands;
     }
     return commands - 2;
