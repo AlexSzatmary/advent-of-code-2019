@@ -220,8 +220,9 @@ int fill_oxygen(shipmap& sm){
             }
             processed.insert(step);
         }
-        now_edges = next_edges;
-        next_edges = list<State>{};
+        now_edges.clear();
+        now_edges.splice(now_edges.end(), next_edges);
+        next_edges.clear();
         ++commands;
     }
     return commands - 2;
