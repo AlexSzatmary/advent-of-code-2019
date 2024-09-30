@@ -39,10 +39,9 @@ struct hash<Coord> {
   const size_t operator()(const Coord& coord) {
     size_t hash{((static_cast<size_t>(coord.i) << 8) | coord.j)};
     return hash;
-    // return coord(coord);
   }
 };
-}  // namespace std
+}
 
 inline bool operator<(const Coord& lhs, const Coord& rhs) {
   return tie(lhs.i, lhs.j) < tie(rhs.i, rhs.j);
@@ -103,31 +102,13 @@ inline bool operator<(const keyset& lhs, const keyset& rhs) {
 inline bool operator<=(const keyset& lhs, const keyset& rhs) {
   return (lhs | rhs) == rhs;
 }
-// size_t hash(keyset& ks){
-//   return std::hash<bitset<26>>(static_cast<bitset<26>>(ks));
-// }
-// hash<bitset<26>> hash_keyset;
-// size_t keyset::operator()(keyset ks){
 
-// }
-
-// using memo = map<pair<int, int>, list<tuple<keyset, string>>>;
 struct Worker {
   int i;
   int j;
   keyset ks;
   string history;
 };
-
-// struct Exact_State {
-//   int i;
-//   int j;
-//   keyset ks;
-// };
-
-// inline bool operator<(const Exact_State& lhs, const Exact_State& rhs) {
-//   return tie(lhs.i, lhs.j, lhs.ks) < tie(rhs.i, rhs.j, rhs.ks);
-// }
 
 tuple<int, int, keyset> scan_maze(vector<string> maze) {
   int i_at{0};
@@ -159,8 +140,8 @@ int flood_explore_maze(vector<string> maze) {
   int dist{1};
   list<Worker> now_edges{Worker{i, j, 0, string()}};
   list<Worker> next_edges{};
-  map<pair<int, int>, unordered_set<keyset>> processed{};
-  // unordered_set<Exact_State> literally_processed_already{};
+  map<pair<int, int>, unordered_set<keyset>> processed_all{};
+  map<pair<int, int>, list<keyset>> processed_good{};
   while (dist < 100'000 && now_edges.size() > 0) {
     for (Worker parent : now_edges) {
       for (auto [di, dj] :
@@ -170,31 +151,26 @@ int flood_explore_maze(vector<string> maze) {
         if (here == '#') continue;
 
         // Have we done this exact thing before?
-        // Exact_State es{child.i, child.j, child.ks};
-        // if (literally_processed_already.find(es) !=
-        //     literally_processed_already.end()) {
-        //   continue;
-        // } else {
-        //   literally_processed_already.insert(es);
-        // }
-        auto here_log = processed.find(pair(child.i, child.j));
-        if (here_log != processed.end()) {
+        auto here_log = processed_all.find(pair(child.i, child.j));
+        if (here_log != processed_all.end()) {
           if (here_log->second.find(child.ks) != here_log->second.end())
             continue;
+          here_log->second.insert(child.ks);
 
           // If we have been before, has it been with a keyset as good or better
           // than what we have now?
           bool done_better{false};
-          for (keyset ks : here_log->second) {
+          for (keyset ks : processed_good[pair(child.i, child.j)]) {
             if (child.ks <= ks) {
               done_better = true;
               break;
             }
           }
           if (done_better) continue;
-          here_log->second.insert(child.ks);
+          processed_good[pair(child.i, child.j)].push_back(child.ks);
         } else {
-          processed[pair(child.i, child.j)] = unordered_set<keyset>({child.ks});
+          processed_all[pair(child.i, child.j)] = unordered_set<keyset>({child.ks});
+          processed_good[pair(child.i, child.j)] = list<keyset>({child.ks});
         }
 
         if ('a' <= here && here <= 'z') {
