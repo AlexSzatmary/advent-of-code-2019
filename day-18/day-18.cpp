@@ -26,6 +26,20 @@ vector<string> my_parse(ifstream& inf) {
   return maze;
 }
 
+void split_maze(vector<string>& maze) {
+  int i_center{static_cast<char>((maze.size() - 1) / 2)};
+  int j_center{static_cast<char>((maze.at(0).size() - 1) / 2)};
+  maze.at(i_center - 1).at(j_center - 1) = '0';
+  maze.at(i_center).at(j_center - 1) = '#';
+  maze.at(i_center + 1).at(j_center - 1) = '1';
+  maze.at(i_center - 1).at(j_center) = '#';
+  maze.at(i_center).at(j_center) = '#';
+  maze.at(i_center + 1).at(j_center) = '#';
+  maze.at(i_center - 1).at(j_center + 1) = '2';
+  maze.at(i_center).at(j_center + 1) = '#';
+  maze.at(i_center + 1).at(j_center + 1) = '3';
+}
+
 struct Coord {
   int i;
   int j;
@@ -85,7 +99,7 @@ void flood_fill_maze(vector<string> maze, int i, int j, distgraph& dg) {
 
 distgraph make_distgraph(vector<string> maze) {
   distgraph dg{};
-  for (char c{'@'}; c <= 'z'; ++c) {
+  for (char c{'0'}; c <= 'z'; ++c) {
     for (int i{0}; i < maze.size(); ++i) {
       size_t j{maze.at(i).find(c, 0)};
       if (j != string::npos) {
@@ -242,7 +256,7 @@ int explore_distgraph(distgraph& dg) {
   while (!now_edges.empty() && clock < 1'000) {
     for (auto [node, ks, clock] : now_edges) {
       for (auto& [neighbor, dist] : dg[node]) {
-        keyset neighbor_ks{ks}; // The keyset upon visiting the neighbor
+        keyset neighbor_ks{ks};  // The keyset upon visiting the neighbor
         // First, pick up the key if there is one
         if ('a' <= neighbor && neighbor <= 'z') {
           neighbor_ks.set(neighbor - 'a');
@@ -275,6 +289,82 @@ int explore_distgraph(distgraph& dg) {
   return best_solution;
 }
 
+struct Node4Keyset {
+  array<char, 4> nodes{};
+  keyset ks{};
+};
+
+bool operator==(const Node4Keyset a, const Node4Keyset b) {
+  return a.nodes[0] == b.nodes[0] && a.nodes[1] == b.nodes[1] &&
+         a.nodes[2] == b.nodes[2] && a.nodes[3] == b.nodes[3] && a.ks == b.ks;
+}
+
+struct Node4KeysetHash {
+  size_t operator()(const Node4Keyset& nk) const {
+    size_t hash{static_cast<size_t>(static_cast<size_t>(nk.nodes[0]) << 54 |
+                                    static_cast<size_t>(nk.nodes[1]) << 48 |
+                                    static_cast<size_t>(nk.nodes[2]) << 40 |
+                                    static_cast<size_t>(nk.nodes[3]) << 32 |
+                                    nk.ks.to_ulong())};
+    return hash;
+  }
+};
+
+int explore_split_distgraph(distgraph& dg) {
+  int clock{0};
+  int best_solution{numeric_limits<int>::max()};
+  keyset needed_keys{find_needed_keys_from_distgraph(dg)};
+  // edges are node, keys, clock
+  list<tuple<array<char, 4>, keyset, int>> now_edges{
+      tuple(array{'0', '1', '2', '3'}, 0, clock)};
+  list<tuple<array<char, 4>, keyset, int>> next_edges{};
+  // I'm just tracking exact visits
+  unordered_map<Node4Keyset, int, Node4KeysetHash> memo{};
+  memo[Node4Keyset{'0', '1', '2', '3', keyset(0)}] = clock;
+
+  while (!now_edges.empty() && clock < 1'000) {
+    for (auto [nodes, ks, clock] : now_edges) {
+      for (int i{0}; i < 4; ++i) {
+        char node_to_change{nodes[i]};
+        for (auto& [neighbor, dist] : dg[node_to_change]) {
+          keyset neighbor_ks{ks};  // The keyset upon visiting the neighbor
+          // First, pick up the key if there is one
+          if ('a' <= neighbor && neighbor <= 'z') {
+            neighbor_ks.set(neighbor - 'a');
+            if (neighbor_ks == needed_keys && clock + dist < best_solution) {
+              best_solution = clock + dist;
+            }
+          } else if ('A' <= neighbor && neighbor <= 'Z' &&
+                     !neighbor_ks.test(neighbor - 'A')) {
+            continue;  // if we're at a door and don't have the key, don't
+                       // proceed
+          }
+
+          // Attempt this node
+          Node4Keyset memo_key_to_find{nodes, neighbor_ks};
+          memo_key_to_find.nodes[i] = neighbor;
+          auto best_attempt_to_node_with_this_ks{memo.find(memo_key_to_find)};
+
+          if (best_attempt_to_node_with_this_ks != memo.end()) {
+            if (best_attempt_to_node_with_this_ks->second <= clock + dist) {
+              continue;
+            }  // we can't beat our previous attempt
+          }
+
+          // we've either never been here or can beat our previous attempt
+          memo[memo_key_to_find] = clock + dist;
+          next_edges.push_back(
+              tuple(memo_key_to_find.nodes, neighbor_ks, clock + dist));
+        }
+      }
+    }
+    now_edges.clear();
+    now_edges.splice(now_edges.end(), next_edges);
+    next_edges.clear();
+  }
+  return best_solution;
+}
+
 int main(int argv, char** argc) {
   cxxopts::Options options("test", "A brief description");
   options.add_options()("1", "Solve part 1", cxxopts::value<bool>())(
@@ -289,11 +379,15 @@ int main(int argv, char** argc) {
   if (result.count("1")) {
     ifstream inf{result.unmatched()[0]};
     auto maze = my_parse(inf);
-    // cout << flood_explore_maze(maze) << endl;
     distgraph dg{make_distgraph(maze)};
     cout << explore_distgraph(dg) << endl;
   }
   if (result.count("2")) {
+    ifstream inf{result.unmatched()[0]};
+    auto maze = my_parse(inf);
+    split_maze(maze);
+    distgraph dg{make_distgraph(maze)};
+    cout << explore_split_distgraph(dg) << endl;
   }
   if (result.count("d")) {
     ifstream inf{result.unmatched()[0]};
