@@ -1,0 +1,9 @@
+OR H J
+OR E J
+OR B T
+AND C T
+AND A T
+NOT T T
+AND T J
+AND D J
+RUN
