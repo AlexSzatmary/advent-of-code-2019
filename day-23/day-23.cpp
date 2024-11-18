@@ -24,10 +24,6 @@ int move_ic_output_to_packet_queue(IntcodeComputer& ic, list<Packet>& packets) {
     ic.output_buffer.pop_front();
     long Y{ic.output_buffer.front()};
     ic.output_buffer.pop_front();
-    if (destination == 255) {
-      cout << Y << endl;
-      return 255;
-    }
     packets.emplace_back(destination, X, Y);
   }
   return 0;
@@ -60,20 +56,63 @@ int main(int argv, char** argc) {
       ic.input_buffer.push_back(-1);
       ic.interpret();
       int ret{move_ic_output_to_packet_queue(ic, packets)};
-      if (ret == 255) return 0;
     }
     while (packets.size()) {
       Packet p{packets.front()};
       packets.pop_front();
+      if (p.destination == 255) {
+        cout << p.Y << endl;
+        return 0;
+      }
       IntcodeComputer& c{computers[p.destination]};
       c.input_buffer.push_back(p.X);
       c.input_buffer.push_back(p.Y);
       c.interpret();
       int ret{move_ic_output_to_packet_queue(c, packets)};
-      if (ret == 255) return 0;
     }
   }
   if (result.count("2")) {
+    ifstream inf{result.unmatched()[0]};
+    vector<long> program{my_parse(inf)};
+    vector<IntcodeComputer> computers{};
+    list<Packet> packets{};
+    long NAT_X{0};
+    long NAT_Y{0};
+    long prev_NAT_Y{0};
+    for (int i{0}; i < 50; ++i) {
+      auto& ic{computers.emplace_back(program)};
+      ic.input_buffer.push_back(i);
+      ic.input_buffer.push_back(-1);
+      ic.interpret();
+      int ret{move_ic_output_to_packet_queue(ic, packets)};
+    }
+    while (true) {
+      if (packets.size()) {
+        Packet p{packets.front()};
+        packets.pop_front();
+        if (p.destination == 255) {
+          NAT_X = p.X;
+          NAT_Y = p.Y;
+        } else {
+          IntcodeComputer& c{computers[p.destination]};
+          c.input_buffer.push_back(p.X);
+          c.input_buffer.push_back(p.Y);
+          c.interpret();
+          int ret{move_ic_output_to_packet_queue(c, packets)};
+        }
+      } else {  // network is quiet
+        if (NAT_Y == prev_NAT_Y) {
+          cout << NAT_Y << endl;
+          return 0;
+        }
+        IntcodeComputer& c{computers[0]};
+        c.input_buffer.push_back(NAT_X);
+        c.input_buffer.push_back(NAT_Y);
+        c.interpret();
+        int ret{move_ic_output_to_packet_queue(c, packets)};
+        prev_NAT_Y = NAT_Y;
+      }
+    }
   }
   if (result.count("day-02")) run_day_2();
   if (result.count("day-05")) run_day_5();
