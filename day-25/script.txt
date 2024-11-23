@@ -1,0 +1,43 @@
+e
+t food ration
+s
+t prime number
+n
+e
+t manifold
+e
+e
+t jam
+w
+n
+e
+t spool of cat6
+w
+n
+t fuel cell
+s
+s
+w
+w
+w
+n
+n
+w
+t mug
+e
+n
+e
+e
+t loom
+w
+w
+s
+s
+w
+n
+w
+d loom
+d jam
+d spool of cat6
+d manifold
+n
